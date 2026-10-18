@@ -13,9 +13,7 @@
 (define collection "glsl-opengl")
 
 (define deps '("base" "racket-shader" "opengl"))
-(define build-deps '("gui-lib" "rackunit-lib"))   ; core-test 用（需要 GL 上下文）
-
-(define compile-omit-paths '("core-test"))
+(define build-deps '("gui-lib" "rackunit-lib"))   ; core-test 用（需要 GL 上下文；core-test 自带 info.rkt）
 
 (define pkg-desc "GLSL + OpenGL for Racket: #lang glsl-opengl (OpenGL bindings + compile/link glue)")
 (define pkg-authors '("lu96"))
