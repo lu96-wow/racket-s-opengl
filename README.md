@@ -1,6 +1,6 @@
 # racket-shader-opengl —— GLSL + OpenGL
 
-`#lang glsl-opengl`（collection `glsl-opengl`）：在纯 GLSL 包 [`racket-shader`](../racket-shader/README.md)
+`#lang glsl-opengl`（collection `glsl-opengl`）：在纯 GLSL 包 [`racket-shader`](https://github.com/lu96-wow/s-shader/blob/racket-shader/README.md)
 之上叠加 OpenGL 层。**单向依赖** `racket-shader`（反向不成立）。
 
 定位：把「用 `racket-shader` 写出的 GLSL」和「`opengl` 包的 C API」接起来，并提供一层
@@ -10,9 +10,70 @@
 
 ## 安装
 
+### 0. 前置条件
+
+- Racket ≥ 8.x（开发用的是 v9.3）
+- 支持 GL 3.3 / 4.0 core profile 的显卡驱动——只在跑 GL 代码/测试时需要，纯 `#lang glsl` 侧不需要
+- OpenGL 头文件/库由 `opengl` 包在安装时自带的 FFI 绑定处理，无需手工装开发包
+
+### 1. 先装依赖包 `racket-shader`（必须）
+
+本包**单向依赖** [`racket-shader`](https://github.com/lu96-wow/s-shader)
+（提供集合 `shader` / `glsl` / `slang`）。该包不在 pkgs.racket-lang.org 上，
+而 `raco pkg install` 只按**包名**解析依赖，所以必须先把它装好，否则装本包会报
+`racket-shader` 找不到。
+
+**A. 从 GitHub 直接装**（推荐；必须用 `--name`，因为仓库名 `s-shader` ≠ 包名 `racket-shader`）
+
 ```bash
-raco pkg install --link ./racket-shader          # 先装纯包
-raco pkg install --link ./racket-shader-opengl
+git clone -b racket-shader https://github.com/lu96-wow/s-shader.git racket-shader
+raco pkg install --auto --link ./racket-shader        # 本地链接，改代码即时生效
+
+# 或者不落地直接装（指定分支 + 包名）
+# raco pkg install --auto --name racket-shader \
+#   "https://github.com/lu96-wow/s-shader.git#racket-shader"
+```
+
+**B. 已有本地副本**
+
+```bash
+raco pkg install --auto --link /path/to/racket-shader
+```
+
+验证依赖已就位：
+
+```bash
+racket -e '(require glsl slang) (displayln "racket-shader ok")'
+```
+
+### 2. 装本包
+
+```bash
+git clone https://github.com/lu96-wow/racket-s-opengl.git
+raco pkg install --auto --link ./racket-s-opengl
+```
+
+`--auto` 会自动从 catalog 拉取 `opengl` 及测试用的 `gui-lib` / `rackunit-lib`；
+`racket-shader` 已在第 1 步装好，不会重复下载。
+
+如果两个仓库是**同级目录**，也可以一条命令一起装（`racket-shader` 必须排在前面）：
+
+```bash
+raco pkg install --auto --link ./racket-shader ./racket-shader-opengl
+```
+
+### 3. 验证
+
+```bash
+racket -e '(require glsl-opengl) (displayln "glsl-opengl ok")'
+raco pkg show -u | grep -E "racket-shader|opengl"
+```
+
+### 卸载
+
+```bash
+raco pkg remove racket-shader-opengl
+raco pkg remove racket-shader        # 确认没有其它包还在依赖它
 ```
 
 依赖 `base`、`racket-shader`、`opengl`（测试另需 `gui-lib`、`rackunit-lib`）。入口：
