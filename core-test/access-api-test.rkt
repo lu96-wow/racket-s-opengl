@@ -143,10 +143,10 @@
               "源码不得出现保留 C 指针 / 终结器自动删 GL 对象的用法（见 racket-glsl-opengl/DESIGN.md §3.1）")
 
 ;; ---------- 3) 便利层（core/easy）的依赖边界 ----------
-;; core/easy 只组合 raw gl（../opengl + 外部 opengl）+ 值层（glsl/core/value）；
-;; 不得 require GLSL 语言文本层（glsl/core/glsl）或胶水层（core/tool）。
+;; core/easy 只组合 raw gl（../opengl + 外部 opengl）+ 值层（shader/value）；
+;; 不得 require GLSL 语言文本层（glsl/）或胶水层（core/tool）。
 (define easy-dir (build-path pkg-root "core" "easy"))
-(define forbidden-deps '("glsl/core/glsl" "../tool/" "core/tool"))
+(define forbidden-deps '("glsl/" "../tool/" "core/tool"))
 (define dep-offenders
   (for*/list ([f (in-list (rkt-files easy-dir))]
               [tok (in-list forbidden-deps)]
@@ -154,6 +154,6 @@
     (list (path->string f) tok)))
 
 (check-equal? dep-offenders '()
-              "core/easy 不得 require glsl/core/glsl（语言文本）或 core/tool（胶水）")
+              "core/easy 不得 require glsl/（语言文本）或 core/tool（胶水）")
 
 (displayln "access-api 全部检查通过")

@@ -51,7 +51,7 @@
 
 ## 依赖
 
-只组合两样东西：raw `gl-*`（`../opengl/rename.rkt` + 外部 `opengl`）和值层（`glsl/core/value/*`）。
-类型别名规范化来自共享词汇模块 `glsl/core/vocab/type-names`（不是语言层 `core/glsl/*`）。
-**不** require `glsl/core/glsl/*`（GLSL 语言文本）或 `core/tool/*`（胶水）——
+只组合两样东西：raw `gl-*`（`../opengl/rename.rkt` + 外部 `opengl`）和值层（`shader/value/*`）。
+类型别名规范化来自共享词汇模块 `shader/types`（不是语言层 `core/glsl/*`）。
+**不** require `glsl/*`（GLSL 语言文本）或 `core/tool/*`（胶水）——
 边界由 `core-test/access-api-test.rkt` 的第二条约束守着。

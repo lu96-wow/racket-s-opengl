@@ -3,7 +3,7 @@
 ;; ============================================================
 ;; gl · buffer.rkt —— 缓冲上传便捷层（Part 3.5）
 ;;
-;; 「逻辑：把 vec-array / glsl-struct 铺平结果 / 任意 ffi 向量 上传到 VBO / EBO」。
+;; 「逻辑：把 vec-array / shader-struct 铺平结果 / 任意 ffi 向量 上传到 VBO / EBO」。
 ;;
 ;;   buffer-upload : glBufferData     （分配 + 拷贝）
 ;;   buffer-update : glBufferSubData  （局部更新；offset 是字节偏移）
@@ -18,7 +18,7 @@
 ;; ============================================================
 
 (require (only-in opengl gl-vector?)
-         (only-in glsl/core/value/buffer vec-buffer? vec-buffer-data)
+         (only-in shader/value/buffer vec-buffer? vec-buffer-data)
          "../opengl/rename.rkt")   ; gl-buffer-data / gl-buffer-sub-data / gl-vector-sizeof / gl-static-draw
 
 (provide buffer-upload buffer-update)

@@ -1,17 +1,17 @@
 #lang racket/base
 ;; ============================================================
 ;; int-attrib-test.rkt —— 整数顶点属性端到端冒烟测试
-;; 运行：racket racket-glsl/core-test/int-attrib-test.rkt   （需要显示器 + GL）
+;; 运行：racket racket-shader-opengl/core-test/int-attrib-test.rkt   （需要显示器 + GL）
 ;; 验证：ivec 顶点属性（gl-vertex-attrib-ip-pointer）+ s32vector VBO 上传
-;;       + gl-int / glsl-stride-bytes（ivec3 = 12 字节）全链路。
+;;       + gl-int / shader-stride-bytes（ivec3 = 12 字节）全链路。
 ;; 通过 = 打印 "int attrib ok" 并 exit 0；失败 = 抛异常。
 ;; ============================================================
 (require racket/gui
          ffi/vector
-         glsl/core/glsl/rewrite            ; (glsl ...) 宏（纯 glsl 包）
-         glsl/core/value/rename-type       ; glsl-stride-bytes
-         glsl/core/value/rename-buffer
-         glsl/core/value/convert
+         glsl/rewrite            ; (glsl ...) 宏（纯 glsl 包）
+         shader/value/rename-type       ; shader-stride-bytes
+         shader/value/rename-buffer
+         shader/value/convert
          "../core/opengl/rename.rkt"       ; gl-* 命名层（含 I 指针与 gl-int）
          "../core/tool/program.rkt")       ; build-program / use-program
 
@@ -51,7 +51,7 @@
     ;; ③ 整数属性：gl-vertex-attrib-ip-pointer（5 参数，无 normalized）
     (define v (u32vector-ref (gl-gen-vertex-arrays 1) 0))
     (gl-bind-vertex-array v)
-    (gl-vertex-attrib-ip-pointer 0 3 gl-int (glsl-stride-bytes 'ivec3) 0)
+    (gl-vertex-attrib-ip-pointer 0 3 gl-int (shader-stride-bytes 'ivec3) 0)
     (gl-enable-vertex-attrib-array 0)
     (gl-bind-vertex-array 0)
     (printf "int attrib ok: program=~a vbo=~a vao=~a\n" prog vbo v)))

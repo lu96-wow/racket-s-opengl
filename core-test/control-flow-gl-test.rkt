@@ -11,7 +11,7 @@
 (require rackunit
          ffi/vector
          racket/gui
-         glsl/core/glsl/rewrite      ; (glsl ...) 宏（纯 glsl 包）
+         glsl/rewrite      ; (glsl ...) 宏（纯 glsl 包）
          "../core/opengl/rename.rkt" ; 本包：gl-* 命名层
          "../core/tool/program.rkt") ; 本包：build-program
 

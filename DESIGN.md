@@ -1,8 +1,8 @@
-# racket-glsl-opengl · 设计与逻辑分层
+# racket-shader-opengl · 设计与逻辑分层
 
 本包 = **Part 3（OpenGL → Racket 1:1 映射）+ Part 3.5（便利层）+ 胶水（编译/链接）**。
 
-**单向依赖** [`racket-glsl`](../racket-glsl/DESIGN.md)：本包 require 纯包，反向不成立。
+**单向依赖** [`racket-shader`](../racket-shader/DESIGN.md)：本包 require 纯包，反向不成立。
 纯包不含任何 `opengl` 引用。
 
 ---
@@ -10,7 +10,7 @@
 ## 1. 逻辑分层
 
 ```
-racket-glsl-opengl/
+racket-shader-opengl/
   core/opengl/rename.rkt          Part 3   函数 1:1 映射（gl-*）——纯机械，无逻辑
   core/opengl/constants.rkt       Part 3   GL_* 常量全量表（生成文件）
   core/opengl/generate-constants.rkt      生成 constants.rkt
@@ -24,15 +24,15 @@ racket-glsl-opengl/
 | Part 3 `core/opengl/` | OpenGL C 符号 | Racket kebab 名 | `gl-*` |
 | Part 3.5 `core/easy/` | raw `gl-*` + 值层 | 组合操作（运行期） | `<资源>-<动词>` |
 | Part 4 `core/meta/` | 纯包编译期表 | 生成 `gl-*` 调用（展开期） | `glsl-*`（消费表） |
-| 胶水 `core/tool/` | GLSL **文本**（`glsl/core/glsl/*`） | shader / program | `<资源>-<动词>` |
+| 胶水 `core/tool/` | GLSL **文本**（`glsl/*`） | shader / program | `<资源>-<动词>` |
 
 三条线互不缠绕——`easy/` 不碰 GLSL 文本，`tool/` 目前不 require `easy/`。
 
 ### 依赖边界（由测试约束）
 
-- `core/easy/*` **可** require：`glsl/core/value/*`、`../opengl/rename.rkt`、外部 `opengl`。
-- `core/easy/*` **不可** require：`glsl/core/glsl/*`（语言文本）、`core/tool/*`。
-- `core/tool/*` 可 require `glsl/core/glsl/*` + `core/opengl/*`。
+- `core/easy/*` **可** require：`shader/value/*`、`../opengl/rename.rkt`、外部 `opengl`。
+- `core/easy/*` **不可** require：`glsl/*`（语言文本）、`core/tool/*`。
+- `core/tool/*` 可 require `glsl/*` + `core/opengl/*`。
 
 约束落在 `core-test/access-api-test.rkt`（grep 源码）。
 
@@ -126,7 +126,7 @@ racket-glsl-opengl/
 
 工具层刻意不与 raw 层同基名（`shader-compile` ↔ `gl-compile-shader`、`program-link` ↔ `gl-link-program`）。
 
-**三元报错**：`shader-compile` / `program-link` 失败时，`glsl/core/tool/error` 渲染
+**三元报错**：`shader-compile` / `program-link` 失败时，`shader/error` 渲染
 「GL 原始日志 → 美化 GLSL + 报错行 → `.rkt` 源文件行」三段式。
 
 注意：`tool/program.rkt`（GL program 生命周期）与 `glsl/program.rkt`（`glsl-program` 源码产物）
@@ -143,7 +143,7 @@ racket-glsl-opengl/
 
 规则：只差 `gl-` 的对照（`compile-shader` vs `gl-compile-shader`）要避免，
 用第二个词区分动作（`shader-compile`）；`gl-*` 绝不用于自己造的东西。
-纯包部分的命名（`glsl-*`、`v*`、`vec-array*`…）见[纯包 DESIGN](../racket-glsl/DESIGN.md)。
+纯包部分的命名（`glsl-*`、`v*`、`vec-array*`…）见[纯包 DESIGN](../racket-shader/DESIGN.md)。
 
 ---
 
@@ -230,6 +230,6 @@ glslangValidator --target-env opengl4.6 -G vert.glsl -o vert.spv
 无需显示器（名字 + 可执行约束）：`access-api-test`（含 GC 不变量 + 依赖边界）、`uniform-test`。
 
 ```bash
-racket racket-glsl-opengl/core-test/access-api-test.rkt
-racket racket-glsl-opengl/core-test/uniform-test.rkt
+racket racket-shader-opengl/core-test/access-api-test.rkt
+racket racket-shader-opengl/core-test/uniform-test.rkt
 ```

@@ -46,7 +46,7 @@
 
 ## 依赖边界
 
-- 编译期依赖纯包：`glsl/core/glsl/interface`（接口表）、`glsl/core/value/type`（类型→分量/字节）。
+- 编译期依赖纯包：`shader/interface`（接口表）、`shader/value/type`（类型→分量/字节）。
 - 运行期 emit 的是 `gl-*`，故**只能在有 `gl-*` 的模块里用**（`#lang glsl-opengl`）。
 - 本层不 require `core/tool/`、不 require 运行期 `core/easy/`。
 

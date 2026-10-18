@@ -3,9 +3,9 @@
 ;; ============================================================
 ;; glsl-opengl/main.rkt —— #lang glsl-opengl 的模块语言（GLSL + OpenGL）
 ;;
-;; 在纯 GLSL 包（collection: glsl）之上叠加 OpenGL 层：
+;; 在 racket-shader 的 glsl 方言之上叠加 OpenGL 层：
 ;;
-;;   (require glsl)                        Part 1 语言 + Part 2 值层 + 报错层
+;;   (require glsl)                        GLSL 方言 + core（值层/模型/反射/产物/报错）
 ;;   core/opengl/rename.rkt                Part 3：OpenGL → Racket 命名（gl-*）
 ;;   core/easy/object.rkt                    GL 对象句柄：buffer-new / *-delete …
 ;;   core/easy/buffer.rkt                    GL 缓冲上传：buffer-upload / buffer-update

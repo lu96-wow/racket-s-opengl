@@ -20,10 +20,10 @@
 ;;       矩形矩阵（matCxR）与 struct/数组 uniform 暂不支持，请用 raw gl-uniform-*。
 ;; ============================================================
 
-(require (only-in glsl/core/value/type type-known? type-kind type-elements kind->name)
-         (only-in glsl/core/value/cvector value-kind)
-         (only-in glsl/core/value/access vec-count vec-ref)
-         (only-in glsl/core/vocab/type-names glsl-type-canonical-symbol)
+(require (only-in shader/value/type type-known? type-kind type-elements kind->name)
+         (only-in shader/value/cvector value-kind)
+         (only-in shader/value/access vec-count vec-ref)
+         (only-in shader/types type-canonical-symbol)
          "../opengl/rename.rkt")
 
 (provide uniform-set! uniform-type-supported?)
@@ -116,7 +116,7 @@
 ;; 该 GLSL 类型能否用 uniform-set! 上传（供宏在编译期判断，决定是否为它生成 setter）
 (define (uniform-type-supported? type)
   (and (or (symbol? type) (string? type))
-       (let ([type* (glsl-type-canonical-symbol type)])
+       (let ([type* (type-canonical-symbol type)])
          (or (sampler-or-image? type*)
              (and (type-known? type*) (hash-ref uploaders type* #f) #t)))))
 
@@ -126,7 +126,7 @@
   (unless (exact-integer? loc)
     (error 'uniform-set! "location 应为整数（uniform-location 的返回值），实际 ~s" loc))
   ;; 类型别名（vec-3 / mat-4 / sampler-2d …）先规范成 canonical
-  (define type* (glsl-type-canonical-symbol type))
+  (define type* (type-canonical-symbol type))
   (cond
     [(sampler-or-image? type*)
      (unless (exact-integer? value)

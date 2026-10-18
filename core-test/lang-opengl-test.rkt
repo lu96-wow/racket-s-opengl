@@ -5,7 +5,7 @@
 ;;
 ;; 运行：racket core-test/lang-opengl-test.rkt
 ;; 验证 #lang glsl-opengl == (require glsl) + OpenGL 层：
-;;   - 纯 GLSL 层的名字透传（vec3 / vadd / glsl-size / parse-gl-error-log）
+;;   - 纯 GLSL 层的名字透传（vec3 / vadd / shader-size / parse-error-log）
 ;;   - gl-* 与 shader-compile / program-link 等可用
 ;; ============================================================
 
@@ -14,8 +14,8 @@
 ;; ---------- glsl 层名字透传（来自 racket-glsl 包）----------
 (check-true (f32vector? (vec3 1.0 2.0 3.0)))
 (check-equal? (f32vector->list (vadd (vec2 1.0 2.0) (vec2 3.0 4.0))) '(4.0 6.0))
-(check-equal? (glsl-size 'vec3) 3)
-(check-true (procedure? parse-gl-error-log))
+(check-equal? (shader-size 'vec3) 3)
+(check-true (procedure? parse-error-log))
 
 ;; ---------- OpenGL 层名字（来自本包）----------
 (check-true (procedure? gl-create-shader))
@@ -35,7 +35,7 @@
         (layout (location 0) in vec3 aPos)
         (define (main) void
           (set! gl_Position (vec4 aPos 1.0)))))
-(check-true (glsl-program? vert))
-(check-true (string-contains? (glsl-program-src vert) "#version 330 core"))
+(check-true (shader-program? vert))
+(check-true (string-contains? (shader-program-src vert) "#version 330 core"))
 
 (displayln "lang (glsl-opengl) 全部测试通过")

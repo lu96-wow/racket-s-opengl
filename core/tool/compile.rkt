@@ -4,7 +4,7 @@
 ;; 胶水 · tool/compile.rkt —— GLSL 文本 → shader 对象 + 报错封装
 ;;
 ;; 只做一件事：把一段 GLSL 文本编译成 shader 对象，并把编译报错讲清楚。
-;;   ① shader-compile：文本（glsl-program 或字符串）→ 编译好的 shader 对象
+;;   ① shader-compile：文本（shader-program 或字符串）→ 编译好的 shader 对象
 ;;   ② 失败时三段式报错：OpenGL 日志 / 美化 GLSL + 报错行 / 源文件对应行
 ;;      （解析 / 定位 / 渲染在 gl-error.rkt，本文件负责触发与抛出）
 ;;
@@ -17,11 +17,12 @@
 ;; 因为它是"编译"这件事本身的一部分。
 ;; ============================================================
 
-(require glsl/core/glsl/pretty        ; glsl-pretty（裸字符串先美化，报错行号才对齐）
-         glsl/core/glsl/program  ; glsl-program? / glsl-program-src
-         glsl/core/tool/error    ; parse-gl-error-log / locate-gl-error / render-error
-         "../opengl/rename.rkt"  ; gl-create-shader / gl-shader-source / gl-compile-shader / ...
-         ffi/vector)             ; s32vector
+(require shader/pretty        ; shader-pretty（裸字符串先美化，报错行号才对齐）
+         shader/program         ; shader-program? / shader-program-src
+         shader/error           ; locate-error / render-error
+         glsl/log               ; parse-error-log（GLSL 驱动日志格式）
+         "../opengl/rename.rkt" ; gl-create-shader / gl-shader-source / gl-compile-shader / ...
+         ffi/vector)            ; s32vector
 
 (provide shader-compile compile-shader)   ; compile-shader = deprecated alias
 
@@ -43,9 +44,9 @@
 ;; 编译失败自动抛错，错误消息带 GLSL 报错日志 + 源映射。
 (define (shader-compile type src)
   ;; 先统一成"美化后的字符串"再编译，报错行号因此对齐美化版：
-  ;;   glsl-program（(glsl ...) 的产物）→ 它的 src 已经是美化串，直接用；
-  ;;   裸字符串 → 现做 glsl-pretty。
-  (define src* (if (glsl-program? src) (glsl-program-src src) (glsl-pretty src)))
+  ;;   shader-program（(glsl ...) 的产物）→ 它的 src 已经是美化串，直接用；
+  ;;   裸字符串 → 现做 shader-pretty。
+  (define src* (if (shader-program? src) (shader-program-src src) (shader-pretty src)))
   (define shader (gl-create-shader type))
   ;; gl-shader-source 的 C 签名要"字符串数组 + 每段长度数组"：
   ;; 长度数组必须是 s32vector（32 位有符号整数向量）。纯 ffi 细节，藏在这里。
@@ -53,10 +54,10 @@
   (gl-compile-shader shader)
   (when (zero? (gl-get-shader-iv shader gl-compile-status))
     (define log (shader-info-log shader))
-    ;; 源映射上下文：glsl-program 才有映射；裸字符串只有美化源码（无 form 提示）
-    (define ctx (if (glsl-program? src) src src*))
-    (define located (map (lambda (e) (locate-gl-error ctx e))
-                         (parse-gl-error-log log)))
+    ;; 源映射上下文：shader-program 才有映射；裸字符串只有美化源码（无 form 提示）
+    (define ctx (if (shader-program? src) src src*))
+    (define located (map (lambda (e) (locate-error ctx e))
+                         (parse-error-log log)))
     ;; 这个 shader 是本函数创建的，编译失败也要释放，否则句柄丢失就泄漏
     (gl-delete-shader shader)
     (error 'shader-compile

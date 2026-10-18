@@ -27,10 +27,11 @@
                      racket/syntax
                      "table.rkt"
                      "../easy/uniform.rkt"   ; 编译期：uniform-type-supported?
-                     (only-in glsl/core/glsl/interface
-                              datum->glsl-interface glsl-interface-vars
-                              glsl-var-name glsl-var-glsl-name
-                              glsl-var-type glsl-var-has-qualifier? glsl-type-name)))
+                     (only-in shader/interface
+                              datum->shader-interface shader-interface-vars)
+                     (only-in shader/type
+                              shader-var-name shader-var-source-name
+                              shader-var-type shader-var-has-qualifier? shader-type-name)))
 
 (provide glsl-uniform-setter!)
 
@@ -44,13 +45,13 @@
     (define by-name (make-hash))
     (define order '())
     (for ([s (in-list shader-ids)])
-      (define iface (datum->glsl-interface (table-datum 'glsl-uniform-setter!
+      (define iface (datum->shader-interface (table-datum 'glsl-uniform-setter!
                                                         (format-id ctx "~a-interface" s))))
-      (for ([v (in-list (glsl-interface-vars iface))]
-             #:when (glsl-var-has-qualifier? v 'uniform))
-        (define surface (glsl-var-name v))
-        (define glsl-nm (glsl-var-glsl-name v))
-        (define ty (glsl-type-name (glsl-var-type v)))
+      (for ([v (in-list (shader-interface-vars iface))]
+             #:when (shader-var-has-qualifier? v 'uniform))
+        (define surface (shader-var-name v))
+        (define glsl-nm (shader-var-source-name v))
+        (define ty (shader-type-name (shader-var-type v)))
         (cond
           [(hash-ref by-name glsl-nm #f)
            => (lambda (prev)

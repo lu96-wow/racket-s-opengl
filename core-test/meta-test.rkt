@@ -11,8 +11,8 @@
          racket/list
          glsl-opengl)
 
-;; ---------- 编译期表：glsl-shader 绑 <name>-interface；glsl-struct 绑 <name>-fields ----------
-(glsl-struct vertex (vec3 pos) (vec3 normal) (vec2 uv))
+;; ---------- 编译期表：glsl-shader 绑 <name>-interface；shader-struct 绑 <name>-fields ----------
+(shader-struct vertex (vec3 pos) (vec3 normal) (vec2 uv))
 (glsl-shader vert
   (version 330 core)
   (layout (location 0) in vec3 pos)        ; 属性名 = struct 字段名（对称标识符）
@@ -22,7 +22,7 @@
 
 ;; 直接检查两张表
 (check-equal? (vertex-fields) '((pos vec3) (normal vec3) (uv vec2)))
-(check-equal? (map glsl-var-name (glsl-interface-vars (datum->glsl-interface (vert-interface))))
+(check-equal? (map shader-var-name (shader-interface-vars (datum->shader-interface (vert-interface))))
               '(pos normal uv))
 
 ;; ---------- 展开：字面量 gl-* 调用（按名字对齐） ----------
@@ -39,7 +39,7 @@
 
 ;; ---------- 顺序无关：shader in 顺序与 struct 字段顺序不同也能按名字对上 ----------
 ;; shader：normal 在 location 0、pos 在 location 1；struct：pos 在前
-(glsl-struct swapped (vec3 pos) (vec3 normal))
+(shader-struct swapped (vec3 pos) (vec3 normal))
 (glsl-shader vswap
   (version 330 core)
   (layout (location 0) in vec3 normal)
@@ -51,13 +51,13 @@
 (check-true (and (member '(#%app gl-vertex-attrib-pointer '0 '3 gl-float '#f '24 '12) (sublists ex-swap)) #t))
 
 ;; ---------- 编译期校验：类型 / 字段缺失 / in 多余 ----------
-(glsl-struct bad (vec3 pos) (vec2 normal) (vec2 uv))       ; 字段 normal 类型不符
+(shader-struct bad (vec3 pos) (vec2 normal) (vec2 uv))       ; 字段 normal 类型不符
 (check-exn exn:fail? (lambda () (expand #'(glsl-vertex-layout! vert bad))))
 
-(glsl-struct few (vec3 pos))                                ; 字段少 → shader 的 normal/uv 无对应
+(shader-struct few (vec3 pos))                                ; 字段少 → shader 的 normal/uv 无对应
 (check-exn exn:fail? (lambda () (expand #'(glsl-vertex-layout! vert few))))
 
-(glsl-struct extra (vec3 pos) (vec3 normal) (vec2 uv) (vec3 tail))  ; 字段多 → 无对应 in
+(shader-struct extra (vec3 pos) (vec3 normal) (vec2 uv) (vec3 tail))  ; 字段多 → 无对应 in
 (check-exn exn:fail? (lambda () (expand #'(glsl-vertex-layout! vert extra))))
 
 ;; ---------- glsl-uniform-setter!：按名字 + 接口推类型 ----------
@@ -107,7 +107,7 @@
 
 ;; ---------- 连字符标识符：interface / vertex-layout / uniform-setter ----------
 ;; 表面名保留连字符；GLSL 名归一成下划线（或内建变量的规范拼写）。
-(glsl-struct hyp-vertex (vec3 model-pos) (vec3 normal-vec))
+(shader-struct hyp-vertex (vec3 model-pos) (vec3 normal-vec))
 (glsl-shader hyp-vert
   (version 330 core)
   (layout (location 0) in vec3 model-pos)
@@ -116,14 +116,14 @@
   (uniform float u-time)
   (define (main) void))
 
-(define hyp-ifc (glsl-program-interface hyp-vert))
-(check-equal? (map glsl-var-name (glsl-interface-vars hyp-ifc))
+(define hyp-ifc (shader-program-interface hyp-vert))
+(check-equal? (map shader-var-name (shader-interface-vars hyp-ifc))
               '(model-pos normal-vec u-model-view u-time))
-(check-equal? (map glsl-var-glsl-name (glsl-interface-vars hyp-ifc))
+(check-equal? (map shader-var-source-name (shader-interface-vars hyp-ifc))
               '(model_pos normal_vec u_model_view u_time))
 ;; 表面名 / GLSL 名都能查
-(check-eq? (glsl-interface-ref hyp-ifc 'u-model-view)
-           (glsl-interface-ref hyp-ifc 'u_model_view))
+(check-eq? (shader-interface-ref hyp-ifc 'u-model-view)
+           (shader-interface-ref hyp-ifc 'u_model_view))
 
 ;; vertex-layout 按归一后的 GLSL 名对齐（struct 字段 model-pos ↔ in model-pos）
 (define hyp-ex (syntax->datum (expand #'(glsl-vertex-layout! hyp-vert hyp-vertex))))
@@ -152,7 +152,7 @@
 
 
 ;; ---------- 内建类型别名：interface / struct 表 / vertex-layout / uniform-setter ----------
-(glsl-struct alias-vertex (vec-3 model-pos) (vec-3 normal-vec))
+(shader-struct alias-vertex (vec-3 model-pos) (vec-3 normal-vec))
 (glsl-shader alias-vert
   (version 450 core)
   (layout (location 0) in vec-3 model-pos)
@@ -161,12 +161,12 @@
   (uniform sampler-2d u-tex)
   (define (main) void))
 
-(define alias-ifc (glsl-program-interface alias-vert))
-(check-equal? (map glsl-var-name (glsl-interface-vars alias-ifc))
+(define alias-ifc (shader-program-interface alias-vert))
+(check-equal? (map shader-var-name (shader-interface-vars alias-ifc))
               '(model-pos normal-vec u-model-view u-tex))
 ;; 反射里的类型名统一 canonical
-(check-equal? (map (lambda (v) (glsl-type-name (glsl-var-type v)))
-                   (glsl-interface-vars alias-ifc))
+(check-equal? (map (lambda (v) (shader-type-name (shader-var-type v)))
+                   (shader-interface-vars alias-ifc))
               '(vec3 vec3 mat4 sampler2D))
 ;; <Name>-fields 也存 canonical 类型名
 (check-equal? (alias-vertex-fields) '((model-pos vec3) (normal-vec vec3)))

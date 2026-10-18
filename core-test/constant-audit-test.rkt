@@ -27,8 +27,8 @@
          racket/string
          racket/runtime-path
          "../core/opengl/rename.rkt"
-         glsl/core/glsl/names
-         glsl/core/vocab/type-names)
+         glsl/names
+         shader/types)
 
 (define-runtime-path here ".")
 (define rename-path (build-path here ".." "core" "opengl" "rename.rkt"))
@@ -145,11 +145,11 @@
                 (format "函数别名映射错误：~a" (car p))))
 
 ;; 内建类型 + 类型别名
-(for ([n (in-list builtin-glsl-type-names)])
+(for ([n (in-list builtin-type-names)])
   (check-true (valid-glsl-identifier? n)
               (format "内建类型不是合法标识符：~a" n)))
-(for ([p (in-list glsl-type-alias-forms)])
-  (check-equal? (glsl-type-canonical-name (car p)) (symbol->string (cdr p))
+(for ([p (in-list type-alias-forms)])
+  (check-equal? (type-canonical-name (car p)) (symbol->string (cdr p))
                 (format "类型别名映射错误：~a" (car p))))
 
 ;; 限定符 / layout key 别名

@@ -1,20 +1,20 @@
 #lang racket/base
 ;; ============================================================
 ;; double-test.rkt —— double 精度端到端冒烟测试
-;; 运行：racket racket-glsl/core-test/double-test.rkt   （需要显示器 + GL 4.0+）
+;; 运行：racket racket-shader-opengl/core-test/double-test.rkt   （需要显示器 + GL 4.0+）
 ;; 验证：dvec 顶点属性（gl-vertex-attrib-l-pointer）+ double uniform
 ;;       （gl-uniform-1d）+ f64vector VBO 上传（gl-buffer-data）全链路。
 ;; 通过 = 打印 "double upload ok" 并 exit 0；失败 = 抛异常。
 ;; ============================================================
 (require racket/gui
          ffi/vector
-         glsl/core/glsl/rewrite             ; (glsl ...) 宏（纯 glsl 包）
-         glsl/core/value/rename-type
-         glsl/core/value/rename-access
-         glsl/core/value/rename-construct
-         glsl/core/value/rename-layout
-         glsl/core/value/rename-buffer
-         glsl/core/value/convert            ; dvec*/concat-dvecs/glsl-stride-bytes
+         glsl/rewrite             ; (glsl ...) 宏（纯 glsl 包）
+         shader/value/rename-type
+         shader/value/rename-access
+         shader/value/rename-construct
+         shader/value/rename-layout
+         shader/value/rename-buffer
+         shader/value/convert            ; dvec*/concat-dvecs/shader-stride-bytes
          "../core/opengl/rename.rkt"        ; gl-* 命名层（含 double 函数）
          "../core/tool/program.rkt")        ; build-program / uniform-location
 
@@ -60,7 +60,7 @@
     ;; ④ double 顶点属性（L-pointer：无 normalized 参数，dvec3 步长 24 字节）
     (define v (u32vector-ref (gl-gen-vertex-arrays 1) 0))
     (gl-bind-vertex-array v)
-    (gl-vertex-attrib-l-pointer 0 3 gl-double (glsl-stride-bytes 'dvec3) 0)
+    (gl-vertex-attrib-l-pointer 0 3 gl-double (shader-stride-bytes 'dvec3) 0)
     (gl-enable-vertex-attrib-array 0)
     (gl-bind-vertex-array 0)
     (printf "double upload ok: program=~a uniform-loc=~a vbo=~a vao=~a\n"
