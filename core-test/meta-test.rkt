@@ -2,7 +2,7 @@
 
 ;; ============================================================
 ;; meta-test.rkt —— 表驱动代码生成：glsl-vertex-layout!
-;; 运行：racket racket-glsl-opengl/core-test/meta-test.rkt
+;; 运行：racket racket-shader-opengl/core-test/meta-test.rkt
 ;; 覆盖：从 shader 接口表 + struct 字段表在编译期生成 gl-vertex-attrib-pointer 字面量；
 ;;       数量/类型不匹配 → 编译期报错
 ;; ============================================================

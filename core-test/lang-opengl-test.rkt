@@ -11,7 +11,7 @@
 
 (require rackunit racket/string)
 
-;; ---------- glsl 层名字透传（来自 racket-glsl 包）----------
+;; ---------- glsl 层名字透传（来自 racket-shader 包）----------
 (check-true (f32vector? (vec3 1.0 2.0 3.0)))
 (check-equal? (f32vector->list (vadd (vec2 1.0 2.0) (vec2 3.0 4.0))) '(4.0 6.0))
 (check-equal? (shader-size 'vec3) 3)

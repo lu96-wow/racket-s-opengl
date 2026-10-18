@@ -3,7 +3,7 @@
 ;; ============================================================
 ;; access-api-test.rkt —— GL 对象/取用便捷层的「可执行约束」+ 名字可用性
 ;;
-;; 运行：racket racket-glsl-opengl/core-test/access-api-test.rkt   （无需显示器）
+;; 运行：racket racket-shader-opengl/core-test/access-api-test.rkt   （无需显示器）
 ;;
 ;; 1) 新 API 名可用（buffer-new / buffer-upload / …）
 ;; 2) 不变量（DESIGN.md §3.1）：
@@ -125,10 +125,10 @@
         p)
       '()))
 
-;; 本文件所在目录 = racket-glsl-opengl/core-test
+;; 本文件所在目录 = racket-shader-opengl/core-test
 (define-runtime-path here ".")
 (define pkg-root  (simplify-path (build-path here "..")))
-(define glsl-root (simplify-path (build-path here ".." ".." "racket-glsl")))
+(define glsl-root (simplify-path (build-path here ".." ".." "racket-shader")))
 (define scan-roots (list (build-path pkg-root "core")
                          (build-path glsl-root "core")))
 
@@ -140,7 +140,7 @@
     (list (path->string f) tok)))
 
 (check-equal? offenders '()
-              "源码不得出现保留 C 指针 / 终结器自动删 GL 对象的用法（见 racket-glsl-opengl/DESIGN.md §3.1）")
+              "源码不得出现保留 C 指针 / 终结器自动删 GL 对象的用法（见 racket-shader-opengl/DESIGN.md §3.1）")
 
 ;; ---------- 3) 便利层（core/easy）的依赖边界 ----------
 ;; core/easy 只组合 raw gl（../opengl + 外部 opengl）+ 值层（shader/value）；

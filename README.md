@@ -116,10 +116,7 @@ racket-shader-opengl/
   core/tool/{compile,program}.rkt        胶水：编译 / 链接 / program 生命周期
 ```
 
-细节见 [DESIGN.md](DESIGN.md)；各目录见
-[`core/opengl/README.md`](core/opengl/README.md)、
-[`core/easy/README.md`](core/easy/README.md)、
-[`core/tool/README.md`](core/tool/README.md)。
+细节见 [DESIGN.md](DESIGN.md)（分层、命名映射、生命周期、表驱动生成、编译/链接胶水）。
 
 ## 测试
 

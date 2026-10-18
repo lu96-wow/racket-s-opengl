@@ -12,7 +12,7 @@
 ;;        （与函数撞名时按设计用 var- 前缀；COPY_* 借用 _BINDING 别名）
 ;;      - 值必须和 C 常量一致
 ;;      - 教程表格涉及的缓冲目标 / usage hint 必须已收录
-;;   2. GLSL 侧：racket-glsl 的内建变量 / 函数 / 类型 / 关键字表
+;;   2. GLSL 侧：racket-shader 的内建变量 / 函数 / 类型 / 关键字表
 ;;      - canonical 名都是合法 GLSL 标识符
 ;;      - 每个别名都能反查回 canonical 名
 ;;

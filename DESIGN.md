@@ -52,8 +52,7 @@ racket-shader-opengl/
 
 另有 `core/opengl/alias.rkt`：给“名字不准确”的函数加语义别名，例如
 `gl-clear-color` → `gl-set-clear-color`、`gl-clear` → `gl-clear-buffers`。
-它只加别名、不改行为，是后续补充命名的唯一入口。细节见
-[`core/opengl/README.md`](core/opengl/README.md)。
+它只加别名、不改行为，是后续补充命名的唯一入口。
 
 ---
 
@@ -67,8 +66,6 @@ racket-shader-opengl/
 | GL 对象句柄（分配 / 删除） | `object.rkt` | 单句柄 `buffer-new` / `texture-new` / `vertex-array-new` / `framebuffer-new` / `renderbuffer-new`、`*-delete`；多句柄 `buffers-new` / `textures-new` / `vertex-arrays-new` / `framebuffers-new` / `renderbuffers-new`、`*-delete`；多值版 `*-new/values` |
 | 缓冲上传 | `buffer.rkt` | `buffer-upload` `buffer-update` |
 | uniform 上传 | `uniform.rkt` | `uniform-set!`（按 GLSL 类型符号分派） |
-
-细节见 [`core/easy/README.md`](core/easy/README.md)。
 
 ### 3.1 生命周期与 Racket GC（关键约定）
 
@@ -101,7 +98,7 @@ racket-shader-opengl/
 | uniform setter | `core/meta/uniform-setter.rkt` | `glsl-uniform-setter!`（Racket setter 名用表面名，GL 查询用 GLSL 名） |
 
 ```racket
-(glsl-struct vertex (vec3 pos) (vec3 normal) (vec2 uv))
+(shader-struct vertex (vec3 pos) (vec3 normal) (vec2 uv))
 (glsl-shader vert (version 330 core)
              (layout (location 0) in vec3 pos) …)   ; 属性名 = struct 字段名
 (glsl-vertex-layout! vert vertex)
@@ -113,7 +110,7 @@ racket-shader-opengl/
   `model-pos` ↔ `model_pos` 可对上）；顺序可不同。
 - **编译期校验**：字段缺 in / in 缺字段 / 类型不符 → 展开期报错。
 - 依赖：编译期读纯包（`interface`/`type`）+ 运行期 emit `gl-*`（故只在 `#lang glsl-opengl` 用）。
-  见 [`core/meta/README.md`](core/meta/README.md)。
+
 
 ## 4. 胶水 · `core/tool/` —— 唯一组合点
 
@@ -130,7 +127,7 @@ racket-shader-opengl/
 「GL 原始日志 → 美化 GLSL + 报错行 → `.rkt` 源文件行」三段式。
 
 注意：`tool/program.rkt`（GL program 生命周期）与 `glsl/program.rkt`（`glsl-program` 源码产物）
-**同名不同物**。细节见 [`core/tool/README.md`](core/tool/README.md)。
+**同名不同物**（本包 `program.rkt` 管 GL program 生命周期，`shader/program.rkt` 是源码产物）。
 
 ---
 
@@ -143,7 +140,7 @@ racket-shader-opengl/
 
 规则：只差 `gl-` 的对照（`compile-shader` vs `gl-compile-shader`）要避免，
 用第二个词区分动作（`shader-compile`）；`gl-*` 绝不用于自己造的东西。
-纯包部分的命名（`glsl-*`、`v*`、`vec-array*`…）见[纯包 DESIGN](../racket-shader/DESIGN.md)。
+纯包部分的命名（`shader-*`、`glsl-*`、`v*`、`vec-array*`…）见[纯包 DESIGN](../racket-shader/DESIGN.md)。
 
 ---
 
@@ -173,7 +170,7 @@ OpenGL 里有两种「静态」，性质完全不同。
 - 二进制格式由**驱动/GPU 私有定义**（opaque），同一机器同一驱动版本才靠得住；
   换厂商/驱动/驱动升级 → `glProgramBinary` 报 `GL_INVALID_OPERATION`，**必须回退到源码编译**。
 - 因此它是**本地缓存**，不是可分发产物，不能打进安装包。
-- 二进制里**没有** Racket 侧接口信息（`glsl-interface`：uniform 名字/类型/location）。
+- 二进制里**没有** Racket 侧接口信息（`shader-interface`：uniform 名字/类型/location）。
   想要反射，得另外保存源 shader 的 interface。
 
 ### 6.2 机制 B：SPIR-V（离线前端编译）
@@ -207,7 +204,7 @@ glslangValidator --target-env opengl4.6 -G vert.glsl -o vert.spv
 | 运行时还编译吗 | 全量 | 缓存命中则不 | 驱动后端仍编 ISA |
 | `opengl` 包绑定 | ✓ | ✓ | ✗ 缺 `glSpecializeShader` + 常量 |
 | 需外部工具 | 无 | 无 | glslangValidator |
-| 是否附接口反射 | 有（`glsl-interface`） | 无 | 无 |
+| 是否附接口反射 | 有（`shader-interface`） | 无 | 无 |
 
 ### 6.4 现结论与将来落点
 
