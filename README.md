@@ -1,5 +1,7 @@
 # racket-shader-opengl —— GLSL + OpenGL
 
+**中文** | [English](README.en.md)
+
 `#lang glsl-opengl`（collection `glsl-opengl`）：在纯 GLSL 包 [`racket-shader`](https://github.com/lu96-wow/s-shader/blob/racket-shader/README.md)
 之上叠加 OpenGL 层。**单向依赖** `racket-shader`（反向不成立）。
 
