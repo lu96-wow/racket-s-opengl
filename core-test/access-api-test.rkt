@@ -132,9 +132,16 @@
 (define scan-roots (list (build-path pkg-root "core")
                          (build-path glsl-root "core")))
 
+;; 1:1 映射文件本身不算「使用」：rename.rkt 收录 gl-map-buffer 等名字是
+;; 为了给调用方一个 kebab 名，不变量约束的是 core 里的实现代码。
+(define (mapping-file? f)
+  (or (string-suffix? (path->string f) "opengl/rename.rkt")
+      (string-suffix? (path->string f) "opengl/alias.rkt")))
+
 (define offenders
   (for*/list ([dir (in-list scan-roots)]
               [f (in-list (rkt-files dir))]
+              #:unless (mapping-file? f)
               [tok (in-list forbidden)]
               #:when (string-contains? (file->string f) tok))
     (list (path->string f) tok)))
