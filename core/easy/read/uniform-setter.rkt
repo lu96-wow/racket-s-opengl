@@ -9,8 +9,8 @@
 ;;   ;; 多 stage（vertex + fragment 的 uniform 并集）：
 ;;   (glsl-uniform-setter! prog vert-src frag-src #:prefix "obj-")
 ;;   ;; 展开为：
-;;   (define (set-uMVP! v) (uniform-set! (uniform-location prog "uMVP") 'mat4 v))
-;;   (define (set-uTime! v) (uniform-set! (uniform-location prog "uTime") 'float v))
+;;   (define (set-uMVP! v) (uniform-set! (gl-get-uniform-location prog "uMVP") 'mat4 v))
+;;   (define (set-uTime! v) (uniform-set! (gl-get-uniform-location prog "uTime") 'float v))
 ;;
 ;; - **签名**：`(glsl-uniform-setter! program-id shader-name ... [#:prefix pfx])`
 ;;   program-id = 运行期 program（setter 闭包引用它）；shader-name... = 提供编译期接口表。
@@ -20,13 +20,13 @@
 ;; - **可选扩展**：不影响 uniform-set!、gl-uniform-*、裸 (glsl …)。
 ;; ============================================================
 
-(require "../easy/uniform.rkt"          ; 运行期：uniform-set!
-         "../tool/program.rkt"          ; 运行期：uniform-location
+(require "../uniform.rkt"          ; 运行期：uniform-set!
+         "../../opengl/rename.rkt"        ; 运行期：gl-get-uniform-location（不引胶水层）
          (for-syntax racket/base
                      racket/list
                      racket/syntax
                      "table.rkt"
-                     "../easy/uniform.rkt"   ; 编译期：uniform-type-supported?
+                     "../uniform.rkt"   ; 编译期：uniform-type-supported?
                      (only-in shader/interface
                               datum->shader-interface shader-interface-vars)
                      (only-in shader/type
@@ -66,7 +66,7 @@
     (for/list ([g (in-list (reverse order))]) (hash-ref by-name g)))
 
   ;; 生成一批 setter（pfx-str 为空则 `set-<名>!`，否则 `set-<pfx><名>!`）
-  ;; setter 名 / 错误信息用表面名；uniform-location 用 GLSL 名。
+  ;; setter 名 / 错误信息用表面名；gl-get-uniform-location 用 GLSL 名。
   (define (build ctx program-id shader-ids pfx-str)
     (define entries (collect-uniforms ctx shader-ids))
     (define items
@@ -81,7 +81,7 @@
                   [(nm ...) (map caddr items)])
       #'(begin
           (define (setter v)
-            (uniform-set! (uniform-location program-id nm) 'ty v))
+            (uniform-set! (gl-get-uniform-location program-id nm) 'ty v))
           ...)))
 
   (syntax-case stx ()

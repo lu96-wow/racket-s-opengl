@@ -153,6 +153,8 @@ Ownership: on failure, `shader-compile` / `program-link` release the objects the
 
 ## Convenience layer (`core/easy/`)
 
+### Call convenience (no GLSL involved)
+
 | Purpose | Names |
 |---|---|
 | GL object handles (allocate / delete) | single: `buffer-new` `texture-new` `vertex-array-new` `framebuffer-new` `renderbuffer-new` and `*-delete`; multiple: `buffers-new` `textures-new` `vertex-arrays-new` `framebuffers-new` `renderbuffers-new` and `*-delete`; multiple-values variants `*-new/values` |
@@ -165,8 +167,33 @@ Key conventions:
   unpredictable times. Lifetime is managed manually by the caller.
 - `buffer-upload` only reads its arguments and retains no reference; the GL call copies
   synchronously.
-- This layer does **not** require `glsl` (language text) or `core/tool` (glue) — the boundary is
+- This part does **not** require `glsl` (language text) or `core/tool` (glue) — the boundary is
   enforced by `core-test/access-api-test.rkt`.
+
+### Pairing GLSL with the Racket side (read mode)
+
+Vertex layouts and uniform setters must agree with the shader. The current implementation uses
+**read mode**: the GLSL is written first, then a macro reads its compile-time interface table and
+aligns the Racket side.
+
+```racket
+(shader-struct vertex (vec3 pos) (vec3 normal))
+(glsl-shader vert (version 330 core)
+             (layout (location 0) in vec3 pos) ...)   ; attribute name = field name
+(glsl-vertex-layout! vert vertex)                     ; -> gl-vertex-attrib-pointer ...
+(glsl-uniform-setter! prog vert)                      ; -> set-uMVP! ...
+```
+
+- Aligned **by name** (`model-pos` <-> `model_pos`), so the order of `in` declarations may differ;
+- Compile-time checks: missing `in` / extra `in` / type mismatch all raise errors;
+- The numbers (components, GL type, stride, offset) live in `core/easy/attrib.rkt`; `location`
+  comes from the GLSL.
+
+> A "generate mode" (schema produces the GLSL declarations plus the bindings) remains a valid
+> direction, but its **implementation has been withdrawn and needs a redesign**: what it lacks is
+> not macro power but an information source (`shader-struct` says nothing about uniforms) and a
+> composition capability (`glsl-splice` takes no arguments, so a schema can only yield a full
+> fragment). The layered analysis is in [DESIGN.md](DESIGN.md) §3.5.
 
 ## Scope
 
@@ -188,7 +215,9 @@ racket-shader-opengl/
   core/opengl/constants.rkt   Part 3   full GL_* constant table (generated file)
   core/opengl/generate-constants.rkt generates constants.rkt
   core/opengl/alias.rkt       Part 3   semantic aliases (e.g. gl-set-clear-color)
-  core/easy/{object,buffer,uniform}.rkt  Part 3.5 convenience layer
+  core/easy/{object,buffer,uniform}.rkt  Part 3.5 call convenience (runtime)
+  core/easy/attrib.rkt                   compile-time attribute numbers
+  core/easy/read/{vertex-layout,uniform-setter}.rkt   read mode: consume existing GLSL
   core/tool/{compile,program}.rkt        glue: compile / link / program lifecycle
 ```
 

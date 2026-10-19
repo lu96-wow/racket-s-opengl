@@ -1,32 +1,34 @@
 #lang racket/base
 
 ;; ============================================================
-;; meta · vertex-layout.rkt —— 表驱动的顶点布局代码生成（编译期，按名字对齐）
+;; easy/read · vertex-layout.rkt —— 读模式：从已有 GLSL 生成顶点布局调用
 ;;
 ;; 「逻辑：读 shader 的编译期接口表 + CPU 侧 struct 的编译期字段表，
-;;   按 **名字** 自动对齐（对称标识符），在展开期直接生成 gl-* 调用」。
+;;   按 **名字** 对齐（对称标识符），在展开期生成 gl-* 字面量」。
 ;;
-;;   (shader-struct vertex (vec3 pos) (vec3 normal))              ; 字段名
-;;   (glsl-shader vert  (layout (location 0) in vec3 pos) …)    ; 属性名 = 字段名
+;;   (shader-struct vertex (vec3 pos) (vec3 normal))            ; 字段名
+;;   (glsl-shader vert (layout (location 0) in vec3 pos) …)     ; 属性名 = 字段名
 ;;   (glsl-vertex-layout! vert vertex)
 ;;   ;; 展开为字面量（无运行期查表）：
 ;;   (gl-vertex-attrib-pointer 0 3 gl-float #f 24 0) (gl-enable-vertex-attrib-array 0)
 ;;   (gl-vertex-attrib-pointer 1 3 gl-float #f 24 12) (gl-enable-vertex-attrib-array 1)
 ;;
+;; 读模式的前提：GLSL 已经写好了，location 由 GLSL 的 layout(location N) 说了算。
+;; 「生成模式」（由 struct 决定 location 并生成声明）方向保留，实现待重新设计，见 DESIGN.md §3.5。
+;;
 ;; - **按名字 join**：字段 `pos` ↔ shader `in pos`；两边顺序可不同。
 ;; - 编译期校验：字段缺 in / in 缺字段 / 类型不符 → 展开期报错。
-;; - slot 取自 shader 的 layout(location)；分量/GL 类型/stride/offset 取自字段表。
+;; - 数字（分量/GL 类型/stride/offset）与生成模式共用 ../attrib.rkt。
 ;; - 精度分派：f32→-pointer、f64→-l-pointer、s32/u32→-ip-pointer。
 ;;
-;; 分层：本宏属 opengl 包的 meta 层；表由纯包产出（glsl-shader / shader-struct）。
-;; 只在有 gl-* 的模块里用（#lang glsl-opengl）。裸写 conflig 仍可用——本宏是可选扩展。
+;; 只在有 gl-* 的模块里用（#lang glsl-opengl）。裸写 attrib-pointer 仍可用——本宏是可选扩展。
 ;; ============================================================
 
 (require (for-syntax racket/base
                      racket/list
                      racket/syntax
                      "table.rkt"
-                     (only-in shader/value/type type-elements type-kind type-byte-size)
+                     "../attrib.rkt"
                      (only-in shader/interface
                               datum->shader-interface shader-interface-vars)
                      (only-in shader/type
@@ -36,17 +38,6 @@
                      (only-in shader/types type-canonical-symbol)))
 
 (provide glsl-vertex-layout!)
-
-(begin-for-syntax
-
-  ;; 属性精度 → (gl 指针函数, gl 类型枚举)
-  (define (pointer-and-enum kind)
-    (case kind
-      [(f32) (values 'gl-vertex-attrib-pointer 'gl-float)]
-      [(f64) (values 'gl-vertex-attrib-l-pointer 'gl-double)]
-      [(s32) (values 'gl-vertex-attrib-ip-pointer 'gl-int)]
-      [(u32) (values 'gl-vertex-attrib-ip-pointer 'gl-unsigned-int)]
-      [else (error 'glsl-vertex-layout! "不支持的属性精度 ~a" kind)])))
 
 (define-syntax (glsl-vertex-layout! stx)
   (syntax-case stx ()
@@ -107,25 +98,11 @@
            (error 'glsl-vertex-layout! "shader 的 in ~a 在 struct 里没有对应字段"
                   (shader-var-name v))))
 
-       ;; 逐字段：offset 累计（按 struct 顺序铺平）；stride = 总字节
-       (define offsets
-         (let loop ([fs fields] [off 0] [acc '()])
-           (cond [(null? fs) (reverse acc)]
-                 [else (loop (cdr fs) (+ off (type-byte-size (cadr (car fs)))) (cons off acc))])))
-       (define stride (for/fold ([off 0]) ([f (in-list fields)]) (+ off (type-byte-size (cadr f)))))
+       ;; 数字：stride / offset / 分量 / GL 类型都由 ../attrib.rkt 算；
+       ;; 唯一由「读」决定的是 location —— 取自同名的 shader in。
+       (define locs
+         (for/list ([f (in-list fields)])
+           (shader-var-layout-ref (hash-ref in-by-name (glsl-name-symbol (car f))) 'location)))
+       (define-values (stride plan) (attrib-plan fields locs))
 
-       ;; 生成：按 struct 字段顺序 emit；location 取自同名的 shader in
-       (define calls
-         (append*
-          (for/list ([f (in-list fields)] [off (in-list offsets)])
-            (define ft (cadr f))
-            (define kind (type-kind ft))
-            (define-values (ptr glenum) (pointer-and-enum kind))
-            (define loc (shader-var-layout-ref (hash-ref in-by-name (glsl-name-symbol (car f))) 'location))
-            (define comps (type-elements ft))
-            (list (if (eq? kind 'f32)
-                      (list ptr loc comps glenum #f stride off)   ; float 有 normalized 参数
-                      (list ptr loc comps glenum stride off))      ; ip/l 指针无 normalized
-                  (list 'gl-enable-vertex-attrib-array loc)))))
-
-       (datum->syntax stx (cons 'begin calls)))]))
+       (datum->syntax stx (cons 'begin (attrib-calls plan stride))))]))

@@ -10,10 +10,13 @@
 ;;   core/easy/object.rkt                    GL 对象句柄：buffer-new / *-delete …
 ;;   core/easy/buffer.rkt                    GL 缓冲上传：buffer-upload / buffer-update
 ;;   core/easy/uniform.rkt                   uniform 上传：uniform-set!（按类型符号分派）
-;;   core/meta/vertex-layout.rkt             表驱动代码生成：glsl-vertex-layout!
-;;   core/meta/uniform-setter.rkt            uniform setter 生成：glsl-uniform-setter!
+;;   core/easy/read/vertex-layout.rkt        读模式：glsl-vertex-layout!（读已有 GLSL 的接口表）
+;;   core/easy/read/uniform-setter.rkt       读模式：glsl-uniform-setter!
 ;;   core/tool/compile.rkt                 shader-compile（文本 → shader + 报错）
 ;;   core/tool/program.rkt                 链接 / program 生命周期
+;;
+;; 便利层的「对齐」目前只有读模式：GLSL 先写好，宏读接口表，把 Racket 侧对齐过去。
+;; 生成模式（由 schema 生成 GLSL 声明）方向保留，实现待重新设计。
 ;;
 ;; 因为 (provide (all-from-out glsl))，#lang glsl-opengl 的 body 里
 ;; 既能用 GLSL 层的名字，也能用 gl-* / shader-compile / program-link。
@@ -26,8 +29,8 @@
          "core/easy/object.rkt"
          "core/easy/buffer.rkt"
          "core/easy/uniform.rkt"
-         "core/meta/vertex-layout.rkt"
-         "core/meta/uniform-setter.rkt"
+         "core/easy/read/vertex-layout.rkt"
+         "core/easy/read/uniform-setter.rkt"
          "core/tool/compile.rkt"
          "core/tool/program.rkt")
 
@@ -37,7 +40,7 @@
          (all-from-out "core/easy/object.rkt")
          (all-from-out "core/easy/buffer.rkt")
          (all-from-out "core/easy/uniform.rkt")
-         (all-from-out "core/meta/vertex-layout.rkt")
-         (all-from-out "core/meta/uniform-setter.rkt")
+         (all-from-out "core/easy/read/vertex-layout.rkt")
+         (all-from-out "core/easy/read/uniform-setter.rkt")
          (all-from-out "core/tool/compile.rkt")
          (all-from-out "core/tool/program.rkt"))

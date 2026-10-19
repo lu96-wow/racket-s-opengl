@@ -143,6 +143,8 @@ raco pkg remove racket-shader        # 确认没有其它包还在依赖它
 
 ## 便利层（`core/easy/`）
 
+### 调用便利（与 GLSL 无关）
+
 | 逻辑 | 名字 |
 |---|---|
 | GL 对象句柄（分配 / 删除） | 单句柄 `buffer-new` `texture-new` `vertex-array-new` `framebuffer-new` `renderbuffer-new`、`*-delete`；多句柄 `buffers-new` `textures-new` `vertex-arrays-new` `framebuffers-new` `renderbuffers-new`、`*-delete`；多值版 `*-new/values` |
@@ -153,8 +155,29 @@ raco pkg remove racket-shader        # 确认没有其它包还在依赖它
 - 句柄是**裸 `GLuint`**，**不挂终结器、不自动回收**——GL 删除必须在拥有该上下文的线程执行，
   而 Racket 终结器在 GC 线程/不确定时机运行。生命周期由调用方手动管理。
 - `buffer-upload` 只读入参、不保留引用；GL 调用是同步拷贝。
-- 本层**不** require `glsl`（语言文本）或 `core/tool`（胶水）——边界由
+- 这一段**不** require `glsl`（语言文本）或 `core/tool`（胶水）——边界由
   `core-test/access-api-test.rkt` 约束。
+
+### 把 GLSL 和 Racket 侧对上（读模式）
+
+顶点布局、uniform setter 都要和 shader 对齐。现在的实现走**读模式**：
+GLSL 先写好，宏读它的编译期接口表，把 Racket 侧对齐过去。
+
+```racket
+(shader-struct vertex (vec3 pos) (vec3 normal))
+(glsl-shader vert (version 330 core)
+             (layout (location 0) in vec3 pos) ...)   ; 属性名 = 字段名
+(glsl-vertex-layout! vert vertex)                     ; → gl-vertex-attrib-pointer …
+(glsl-uniform-setter! prog vert)                      ; → set-uMVP! …
+```
+
+- 按名字对齐（`model-pos` ↔ `model_pos`），shader 里 `in` 的顺序可以不同；
+- 编译期校验：字段缺 in / in 缺字段 / 类型不符都报错；
+- 数字（分量、GL 类型、stride、offset）在 `core/easy/attrib.rkt`，`location` 来自 GLSL。
+
+> 「生成模式」（由 schema 生成 GLSL 声明 + 绑定）方向保留，**实现已撤下、待重新设计**：
+> 它缺的不是宏能力，而是信息源（`shader-struct` 里没有 uniform）与组合能力
+> （`glsl-splice` 不接参数，只能产出全量片段）。分层分析见 [DESIGN.md](DESIGN.md) §3.5。
 
 ## 范围
 
@@ -175,7 +198,9 @@ racket-shader-opengl/
   core/opengl/constants.rkt   Part 3   GL_* 常量全量表（生成文件）
   core/opengl/generate-constants.rkt 生成 constants.rkt
   core/opengl/alias.rkt       Part 3   语义别名（如 gl-set-clear-color）
-  core/easy/{object,buffer,uniform}.rkt  Part 3.5 便利层
+  core/easy/{object,buffer,uniform}.rkt  Part 3.5 调用便利（运行期）
+  core/easy/attrib.rkt                   顶点属性的编译期数字
+  core/easy/read/{vertex-layout,uniform-setter}.rkt   读模式：读已有 GLSL
   core/tool/{compile,program}.rkt        胶水：编译 / 链接 / program 生命周期
 ```
 
@@ -191,7 +216,8 @@ racket racket-shader-opengl/core-test/int-attrib-test.rkt
 racket racket-shader-opengl/core-test/double-test.rkt
 ```
 
-无需显示器的名字/约束测试：`core-test/access-api-test.rkt`、`core-test/uniform-test.rkt`。
+无需显示器的测试：`core-test/access-api-test.rkt`、`core-test/uniform-test.rkt`、
+`core-test/read-test.rkt`（读模式）。
 
 ## License
 

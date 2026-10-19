@@ -143,17 +143,27 @@
               "源码不得出现保留 C 指针 / 终结器自动删 GL 对象的用法（见 racket-shader-opengl/DESIGN.md §3.1）")
 
 ;; ---------- 3) 便利层（core/easy）的依赖边界 ----------
-;; core/easy 只组合 raw gl（../opengl + 外部 opengl）+ 值层（shader/value）；
-;; 不得 require GLSL 语言文本层（glsl/）或胶水层（core/tool）。
+;; core/easy 的边界按层分：
+;;   基础文件（object/buffer/uniform/attrib）：只组合 raw gl + 值层，不碰 GLSL 文本、不碰胶水；
+;;   read/：可以 require glsl/（读名字、读编译期接口表），但不碰胶水 core/tool。
 (define easy-dir (build-path pkg-root "core" "easy"))
-(define forbidden-deps '("glsl/" "../tool/" "core/tool"))
-(define dep-offenders
-  (for*/list ([f (in-list (rkt-files easy-dir))]
-              [tok (in-list forbidden-deps)]
+(define base-files
+  (for/list ([n (in-list '("object.rkt" "buffer.rkt" "uniform.rkt" "attrib.rkt"))])
+    (build-path easy-dir n)))
+(define mode-dirs (list (build-path easy-dir "read")))
+
+(define (dep-offenders files forbidden)
+  (for*/list ([f (in-list files)]
+              [tok (in-list forbidden)]
               #:when (string-contains? (file->string f) tok))
     (list (path->string f) tok)))
 
-(check-equal? dep-offenders '()
-              "core/easy 不得 require glsl/（语言文本）或 core/tool（胶水）")
+(check-equal? (dep-offenders base-files '("glsl/" "tool/")) '()
+              "core/easy 基础文件不得 require glsl/（语言文本）或 tool/（胶水）")
+
+(check-equal? (append* (for/list ([d (in-list mode-dirs)])
+                         (dep-offenders (rkt-files d) '("tool/"))))
+              '()
+              "core/easy/read 不得 require tool/（胶水）")
 
 (displayln "access-api 全部检查通过")

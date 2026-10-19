@@ -1,8 +1,8 @@
 #lang racket/base
 
 ;; ============================================================
-;; meta-test.rkt —— 表驱动代码生成：glsl-vertex-layout!
-;; 运行：racket racket-shader-opengl/core-test/meta-test.rkt
+;; read-test.rkt —— 读模式：glsl-vertex-layout! / glsl-uniform-setter!
+;; 运行：racket racket-shader-opengl/core-test/read-test.rkt
 ;; 覆盖：从 shader 接口表 + struct 字段表在编译期生成 gl-vertex-attrib-pointer 字面量；
 ;;       数量/类型不匹配 → 编译期报错
 ;; ============================================================
@@ -190,4 +190,4 @@
 (check-true (uniform-type-supported? 'mat-4))
 (check-true (uniform-type-supported? 'sampler-2d))
 
-(displayln "meta 全部测试通过")
+(displayln "read 全部测试通过")
