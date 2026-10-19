@@ -158,26 +158,21 @@ raco pkg remove racket-shader        # 确认没有其它包还在依赖它
 - 这一段**不** require `glsl`（语言文本）或 `core/tool`（胶水）——边界由
   `core-test/access-api-test.rkt` 约束。
 
-### 把 GLSL 和 Racket 侧对上（读模式）
+### 自动对齐宏：已移除，设计待重做
 
-顶点布局、uniform setter 都要和 shader 对齐。现在的实现走**读模式**：
-GLSL 先写好，宏读它的编译期接口表，把 Racket 侧对齐过去。
+`glsl-vertex-layout!` / `glsl-uniform-setter!`（以及实验性的生成模式）已删除。
+它们要把 GLSL 声明、CPU 打包顺序、VAO 的六个数字对上，但只能校验其中一部分：
+字段名相等、显式 location、类型匹配可以报错；**打包顺序和「单 VBO」无法校验**。
+重做思路（schema 作为枢轴、读/写两个方向的取舍）见 [DESIGN.md](DESIGN.md) §3.5。
+
+在此之前，需要布局和 setter 就**裸写**：
 
 ```racket
-(shader-struct vertex (vec3 pos) (vec3 normal))
-(glsl-shader vert (version 330 core)
-             (layout (location 0) in vec3 pos) ...)   ; 属性名 = 字段名
-(glsl-vertex-layout! vert vertex)                     ; → gl-vertex-attrib-pointer …
-(glsl-uniform-setter! prog vert)                      ; → set-uMVP! …
+(gl-vertex-attrib-pointer 0 3 gl-float #f 32 0)
+(gl-enable-vertex-attrib-array 0)
+;; …
+(uniform-set! (uniform-location prog "uMVP") 'mat-4 mvp)
 ```
-
-- 按名字对齐（`model-pos` ↔ `model_pos`），shader 里 `in` 的顺序可以不同；
-- 编译期校验：字段缺 in / in 缺字段 / 类型不符都报错；
-- 数字（分量、GL 类型、stride、offset）在 `core/easy/attrib.rkt`，`location` 来自 GLSL。
-
-> 「生成模式」（由 schema 生成 GLSL 声明 + 绑定）方向保留，**实现已撤下、待重新设计**：
-> 它缺的不是宏能力，而是信息源（`shader-struct` 里没有 uniform）与组合能力
-> （`glsl-splice` 不接参数，只能产出全量片段）。分层分析见 [DESIGN.md](DESIGN.md) §3.5。
 
 ## 范围
 
@@ -199,8 +194,6 @@ racket-shader-opengl/
   core/opengl/generate-constants.rkt 生成 constants.rkt
   core/opengl/alias.rkt       Part 3   语义别名（如 gl-set-clear-color）
   core/easy/{object,buffer,uniform}.rkt  Part 3.5 调用便利（运行期）
-  core/easy/attrib.rkt                   顶点属性的编译期数字
-  core/easy/read/{vertex-layout,uniform-setter}.rkt   读模式：读已有 GLSL
   core/tool/{compile,program}.rkt        胶水：编译 / 链接 / program 生命周期
 ```
 
@@ -216,8 +209,7 @@ racket racket-shader-opengl/core-test/int-attrib-test.rkt
 racket racket-shader-opengl/core-test/double-test.rkt
 ```
 
-无需显示器的测试：`core-test/access-api-test.rkt`、`core-test/uniform-test.rkt`、
-`core-test/read-test.rkt`（读模式）。
+无需显示器的测试：`core-test/access-api-test.rkt`、`core-test/uniform-test.rkt`。
 
 ## License
 

@@ -15,8 +15,6 @@ racket-shader-opengl/
   core/opengl/constants.rkt       Part 3   GL_* 常量全量表（生成文件）
   core/opengl/generate-constants.rkt      生成 constants.rkt
   core/easy/{object,buffer,uniform}.rkt   Part 3.5 调用便利——组合 raw gl + 值层（运行期）
-  core/easy/attrib.rkt            Part 4   顶点属性的编译期数字
-  core/easy/read/{vertex-layout,uniform-setter}.rkt  Part 4 读模式：读已有 GLSL 的接口表
   core/tool/{compile,program}.rkt         胶水——把 GLSL 文本编成 GL 对象
 ```
 
@@ -24,17 +22,15 @@ racket-shader-opengl/
 |---|---|---|---|
 | Part 3 `core/opengl/` | OpenGL C 符号 | Racket kebab 名 | `gl-*` |
 | Part 3.5 `core/easy/` | raw `gl-*` + 值层 | 组合操作（运行期） | `<资源>-<动词>` |
-| Part 4 `core/easy/read/` | 已有 GLSL 的接口表 | 生成 `gl-*` 调用（展开期） | `glsl-*`（消费表） |
 | 胶水 `core/tool/` | GLSL **文本**（`glsl/*`） | shader / program | `<资源>-<动词>` |
 
-`easy/` 的基础三件与 `attrib.rkt` 只碰 raw gl 和值层；`read/` 会读纯包的编译期表与
-`glsl/names`，但不 require 胶水层。`tool/` 目前不 require `easy/`。
+`easy/` 只碰 raw gl 和值层；`tool/` 目前不 require `easy/`。
+（原先的「自动对齐」宏已移除，见 §3.5。）
 
 ### 依赖边界（由测试约束）
 
-- `core/easy/{object,buffer,uniform,attrib}.rkt` **可** require：`shader/value/*`、`../opengl/rename.rkt`、外部 `opengl`。
-- 上面这些**不可** require：`glsl/*`（语言文本）、`tool/*`（胶水）。
-- `core/easy/read/*` **可** require `glsl/*`（读名字/读编译期表），**不可** require `tool/*`。
+- `core/easy/*` **可** require：`shader/value/*`、`../opengl/rename.rkt`、外部 `opengl`。
+- `core/easy/*` **不可** require：`glsl/*`（语言文本）、`tool/*`（胶水）。
 - `core/tool/*` 可 require `glsl/*` + `core/opengl/*`。
 
 约束落在 `core-test/access-api-test.rkt`（grep 源码）。
@@ -61,8 +57,8 @@ racket-shader-opengl/
 
 ## 3. Part 3.5 · `core/easy/` —— 便利层
 
-`core/easy/` 是「便利层」这个总称，里面有两块：调用便利（本节）和 `read/`（§3.5）。
-调用便利把 1:1 的 `gl-*` 包成「返回/接收单个句柄、直接吃 ffi 向量」的函数；
+`core/easy/` 是「便利层」这个总称，现在只剩**调用便利**（本节）：
+把 1:1 的 `gl-*` 包成「返回/接收单个句柄、直接吃 ffi 向量」的函数；
 命名**不用 `gl-*`**（`glGenBuffer` 这个 C 符号并不存在），走工具层 `<资源>-<动词>`。
 
 | 逻辑 | 文件 | 名字 |
@@ -92,47 +88,53 @@ racket-shader-opengl/
 
 ---
 
-## 3.5 Part 4 · `core/easy/read/` —— 读模式
+## 3.5 已移除：自动对齐宏（设计待重做）
 
-把**已经写好的 GLSL** 和 Racket 侧（顶点布局、uniform setter）对齐：
-消费纯包产出的编译期表（`<name>-interface` / `<Name>-fields`），在展开期生成 `gl-*` 字面量。
+原先 `core/easy/read/`（`glsl-vertex-layout!`、`glsl-uniform-setter!`）与实验性的
+`core/easy/gen/` 已全部删除。它们做的是「让 GLSL 声明和 Racket 侧（布局 / uniform setter）
+自动对上」，但**依赖一组未显式化的约定**：
 
-| 逻辑 | 文件 | 名字 |
+| 约定 | 谁依赖 | 能不能校验 |
 |---|---|---|
-| 顶点布局 | `core/easy/read/vertex-layout.rkt` | `glsl-vertex-layout!` |
-| uniform setter | `core/easy/read/uniform-setter.rkt` | `glsl-uniform-setter!`（Racket setter 名用表面名，GL 查询用 GLSL 名） |
-| 编译期表读取 | `core/easy/read/table.rkt` | `table-datum` |
+| struct 字段名 = shader `in` 名 | vertex-layout 的 join 键 | 能（报错） |
+| 每个 `in` 必须写 `layout(location N)` | vertex-layout | 能（报错） |
+| 1 字段 = 1 location | vertex-layout | 以前不能（矩阵会生成非法调用），现已改成报错 |
+| 按 struct 顺序紧排、单 VBO | vertex-layout 推导 stride/offset | **不能**（数据在显存里） |
+| setter 名 = `set-<表面名>!` | uniform-setter | 只是命名，错了是未绑定 |
+| 不支持的类型静默跳过 | uniform-setter | 不能（现已改成报错 + `#:skip-unsupported`） |
 
-```racket
-(shader-struct vertex (vec3 pos) (vec3 normal) (vec2 uv))
-(glsl-shader vert (version 330 core)
-             (layout (location 0) in vec3 pos) ...)   ; 属性名 = struct 字段名
-(glsl-vertex-layout! vert vertex)
-;; 展开： (gl-vertex-attrib-pointer 0 3 gl-float #f 32 0) (gl-enable-vertex-attrib-array 0) ...
+结论：这些宏把「数据布局」这件事**隐含在约定里**——信息散在三处（GLSL 声明、CPU 打包顺序、
+VAO 的六个数字），宏只能校验其中一部分，另一部分（打包顺序、单 VBO）根本无从校验。
+
+### 重做时的候选模型：schema 作为枢轴
+
+把「数据布局」显式成一个值（一张字段表），让三个消费者都读它：
+
+```
+读方向：  GLSL 声明 ──► schema ──► gl-* 调用
+写方向：  schema ──► GLSL 声明片段
+                        └──► gl-* 调用
+打包：    schema ──► 字节 ──► buffer-upload
 ```
 
-- 表来源：纯包的 `glsl-shader`（接口表）/ `shader-struct`（字段表）。
-- **按名字自动对齐**：字段名 = shader `in` 名（按归一后的 GLSL 标识符比较，
-  `model-pos` ↔ `model_pos` 可对上）；顺序可不同。
-- **编译期校验**：字段缺 in / in 缺字段 / 类型不符 → 展开期报错。
-- 数字（分量/GL 类型/stride/offset）由 `core/easy/attrib.rkt` 算，`location` 由 shader 提供。
+字段表需要能表达 GLSL 有和 GLSL 没有的两类信息：
 
-### 生成模式：方向保留，实现待重新设计
+| 字段 | 来源 | 落点 |
+|---|---|---|
+| name / type / location | GLSL 接口表 | `gl-vertex-attrib-pointer` 的前 3 个参数、声明 |
+| normalized | schema 注解 | 第 4 个参数 |
+| stride / offset | 推导或 schema 覆盖 | 第 5、6 个参数 |
+| divisor | schema 注解（GLSL 没有） | `gl-vertex-attrib-divisor` |
+| buffer | schema 注解（GLSL 没有） | 调用前的 `gl-bind-buffer` |
 
-「由 schema 生成 GLSL 声明 + Racket 侧」作为另一个方向仍然成立，但上一版实现（`define-vertex-attribs`
-：由 `shader-struct` 生成全量 `layout(location N) in ...` 片段 + 布局宏）已撤掉，原因是把三层混在了一起：
+重做前需要先定：
 
-| 层 | 上一版的问题 |
-|---|---|
-| **信息** | `shader-struct` 只描述顶点属性，**没有 uniform 的信息源** —— uniform 侧的生成不是宏能力问题，是没有表可读；字段表也没有显式 location 字段（只能稠密 0..n-1） |
-| **能力** | 由字段表造声明片段 + 布局宏本身是成立的（产物与读模式逐字相同） |
-| **组合** | `glsl-splice` 只接一个标识符、无参数，所以一个 schema 只能产出**全量**片段；shader 想用子集就得另定义 schema |
+1. **权威在谁**：GLSL 先写（读方向）还是 schema 先写（写方向）？两边都支持意味着 schema 要有双向转换。
+2. **哪些信息进 schema**：只放 GLSL 能表达的（那 schema ≈ 接口表），还是也放 divisor/buffer/offset（那 schema 是独立契约）。
+3. **打包要不要一起管**：CPU 侧打包顺序与 schema 一致是**无法校验**的，只能靠「同源生成」或运行时断言。
+4. **调用点形态**：宏生成字面量（零运行期开销，但要求 location 编译期已知）还是运行期解释 schema（灵活、可查驱动分配的位置，但有查表/调用开销）。
 
-重新设计时要先决定：
-
-1. 信息源补到哪：是否引入 uniform schema（以及是否允许字段表写显式 location）；
-2. 组合层是否扩展（splice 支持字段选择 / 由 schema 派生子集片段），还是接受「一个属性集一个全量片段」；
-3. 与读模式的边界：生成模式产出的是「GLSL 声明 + 绑定」，读模式产出的是「绑定」；两者都只负责**对齐**，不负责打包上传（那是 `buffer-upload` 的事）。
+在此之前，调用便利（`object` / `buffer` / `uniform`）保持不变：它们不带约定，只是把 `gl-*` 包得顺手。
 
 ## 4. 胶水 · `core/tool/` —— 唯一组合点
 
@@ -159,7 +161,6 @@ racket-shader-opengl/
 |---|---|---|
 | `gl-<opengl符号>` | OpenGL C API 的 **1:1 机械映射**（不发明、不加逻辑） | `gl-create-shader`、`gl-array-buffer` |
 | `<资源>-<动词>` | 本包的便利/胶水层（非 `gl-`） | `buffer-new`、`buffer-upload`、`uniform-set!`、`shader-compile`、`program-link` |
-| `glsl-<动作>!` | 读模式：消费编译期表，生成 `gl-*` | `glsl-vertex-layout!`、`glsl-uniform-setter!` |
 
 规则：只差 `gl-` 的对照（`compile-shader` vs `gl-compile-shader`）要避免，
 用第二个词区分动作（`shader-compile`）；`gl-*` 绝不用于自己造的东西。
@@ -247,11 +248,9 @@ glslangValidator --target-env opengl4.6 -G vert.glsl -o vert.spv
 ## 7. 测试
 
 需显示器 + GL：`lang-opengl-test` / `control-flow-gl-test` / `int-attrib-test` / `double-test`。
-无需显示器：`access-api-test`（含 GC 不变量 + 依赖边界）、`uniform-test`、
-`read-test`（读模式）。
+无需显示器：`access-api-test`（含 GC 不变量 + 依赖边界）、`uniform-test`。
 
 ```bash
 racket racket-shader-opengl/core-test/access-api-test.rkt
 racket racket-shader-opengl/core-test/uniform-test.rkt
-racket racket-shader-opengl/core-test/read-test.rkt
 ```

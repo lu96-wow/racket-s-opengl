@@ -150,14 +150,12 @@
               "源码不得出现保留 C 指针 / 终结器自动删 GL 对象的用法（见 racket-shader-opengl/DESIGN.md §3.1）")
 
 ;; ---------- 3) 便利层（core/easy）的依赖边界 ----------
-;; core/easy 的边界按层分：
-;;   基础文件（object/buffer/uniform/attrib）：只组合 raw gl + 值层，不碰 GLSL 文本、不碰胶水；
-;;   read/：可以 require glsl/（读名字、读编译期接口表），但不碰胶水 core/tool。
+;; 便利层只保留调用便利（object/buffer/uniform）：只组合 raw gl + 值层，
+;; 不碰 GLSL 文本、不碰胶水。依赖这些约定的「自动对齐」宏已移除（DESIGN.md §3.5）。
 (define easy-dir (build-path pkg-root "core" "easy"))
 (define base-files
-  (for/list ([n (in-list '("object.rkt" "buffer.rkt" "uniform.rkt" "attrib.rkt"))])
+  (for/list ([n (in-list '("object.rkt" "buffer.rkt" "uniform.rkt"))])
     (build-path easy-dir n)))
-(define mode-dirs (list (build-path easy-dir "read")))
 
 (define (dep-offenders files forbidden)
   (for*/list ([f (in-list files)]
@@ -167,10 +165,5 @@
 
 (check-equal? (dep-offenders base-files '("glsl/" "tool/")) '()
               "core/easy 基础文件不得 require glsl/（语言文本）或 tool/（胶水）")
-
-(check-equal? (append* (for/list ([d (in-list mode-dirs)])
-                         (dep-offenders (rkt-files d) '("tool/"))))
-              '()
-              "core/easy/read 不得 require tool/（胶水）")
 
 (displayln "access-api 全部检查通过")
